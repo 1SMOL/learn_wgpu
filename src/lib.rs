@@ -10,6 +10,7 @@ struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
+    debug_color: wgpu::Color,
 }
 
 impl State {
@@ -50,6 +51,13 @@ impl State {
         };
         surface.configure(&device, &config);
 
+        let debug_color = wgpu::Color {
+            r: 0.1,
+            g: 0.2,
+            b: 0.3,
+            a: 1.0,
+        };
+
         // Return self.
         Self {
             surface,
@@ -57,6 +65,7 @@ impl State {
             queue,
             config,
             size,
+            debug_color,
         }
     }
 
@@ -70,15 +79,28 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::CursorMoved { device_id, position, modifiers } => {
+                let r = position.x / self.size.width as f64;
+                let b = position.y / self.size.height as f64;
+
+                self.debug_color = wgpu::Color {
+                   r,
+                   g: 0.5,
+                   b,
+                   a: 1.0,
+                }       
+            }
+            _ => {}
+        }
         false
-        // todo
     }
 
     fn update(&mut self) {
         // todo
     }
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    fn render(&mut self, color: wgpu::Color) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -92,12 +114,7 @@ impl State {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(color),
                         store: true,
                     },
                 })],
@@ -154,7 +171,7 @@ pub async fn run() {
         },
         Event::RedrawRequested(window_id) if window_id == window.id() => {
             state.update();
-            match state.render() {
+            match state.render(state.debug_color) {
                 Ok(_) => {}
                 // Reconfigure the surface if lost
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
