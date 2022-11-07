@@ -1,4 +1,3 @@
 fn main() {
-    println!("Hello, wgpu!");
-    learn_wgpu::run();
+    pollster::block_on(learn_wgpu::run());
 }
